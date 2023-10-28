@@ -17,7 +17,7 @@ Está preparada tanto para la ejecución en local, como para crear una imagen en
 | ------ | ----------- | ---------------------------------------------------------------------------- | --------------------------------------------------------- |
 | GET    | /api/search | `query=${patrón a buscar}` | Busca películas y series por título |
 | GET    | /api/film   | `id=${id}`                                             | Obtiene datos de una película o serie mediante un ID      |
-| POST   | /api/film   | `url="https://www.filmaffinity.com/es/film819745.html"` | Obtiene datos de una película o serie mediante una URL    |
+| GET   | /api/film   | `url="https://www.filmaffinity.com/es/film819745.html"` | Obtiene datos de una película o serie mediante una URL    |
 
 ## Ejemplos de uso
 
