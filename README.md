@@ -122,3 +122,12 @@ GET [http://localhost:22049/api/film?url=%22https://www.filmaffinity.com/es/film
    "year": "1988"
 }
 ```
+##### Instalación propia funcional, con ia y sin conocimientos previos, Gracias ciencia por la oportunidad.
+
+```sh
+git clone https://github.com/dgongut/filmaffinity-api.git
+cd filmaffinity-api
+pip3 install flask requests beautifulsoup4
+python3 filmaffinity-api.py
+python3 pelicula.py
+```
