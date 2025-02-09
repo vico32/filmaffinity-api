@@ -44,9 +44,7 @@ def search():
             "url": element[1],
             "rating": element[2],
             "year": element[3],
-            "image": element[4],
-            "genre": element[5],
-            "summary": element[6]
+            "image": element[4]
         }
         response.append(responseItem)
 
@@ -95,69 +93,101 @@ def filmById():
         "photography": element[13],
         "music": element[14],
         "ratingCount": element[15],
-        "duration": element[16]
+        "duration": element[16],
+        "isFilm": element[17],
+        "isSerie": element[18],
+        "isDocumentary": element[19]
     }
 
     return jsonify(response), STATUS_CODE_OK
 
 def web_scrapping_filmaffinity_search_page(htmlText):
     soup = BeautifulSoup(htmlText, "html.parser")
-    
-    # Depuración: Imprimir el HTML para verificar la estructura
-    print(soup.prettify())  # Añadir esto para ver la estructura de la página
-
-    filmaffinityRawElements = soup.find_all(class_='movie-card mc-flex movie-card-1')
-
     filmaffinityElements = []
 
-    noResults = soup.find('b', string=re.compile(r"No hay resultados?"))
+    # Encontrar todas las tarjetas de películas
+    movie_cards = soup.find_all('div', class_='d-flex')
 
-    if noResults:
-        return filmaffinityElements
-    elif filmaffinityRawElements:  # Hemos ido a la pantalla de búsqueda porque hay más de un resultado
-        for filmElement in filmaffinityRawElements:
-            posterElement = filmElement.find('div', class_="mc-poster")
-            imageElement = posterElement.find('img')
-            if imageElement:
-                image = imageElement['src'].replace("mtiny", "large")
-            else:
-                image = None
+    for card in movie_cards:
+        # 📌 Imagen
+        image = ""
+        poster_div = card.find('div', class_='mc-poster')
+        print(poster_div)
+        if poster_div:
+            img_tag = poster_div.find('img')
+            print(img_tag)
+            if img_tag:
+                srcset = img_tag.get('data-srcset', '').strip()
+                print(srcset)
+                if srcset:
+                    # Separar las distintas opciones en srcset
+                    srcset_options = srcset.split(", ")
+                    for option in srcset_options:
+                        print(option)
+                        # Verificar si la opción contiene una URL
+                        url = option.split(" ")[0]
+                        if 'large' in url:
+                            image = url
+                            break
 
-            linkOnImage = posterElement.find('a')
-            url = linkOnImage['href']
+        # 📌 Título y URL
+        title = "Título no disponible"
+        url = ""
+        title_div = card.find('div', class_='mc-title')
+        if title_div:
+            link = title_div.find('a')
+            if link:
+                title = link.get_text(strip=True)
+                url = link.get('href', '').strip()
+                # Si la URL es relativa, agregamos la base
+                if url.startswith('/'):
+                    url = f"https://www.filmaffinity.com{url}"
 
-            title = linkOnImage['title'].rstrip()
+        # 📌 Año
+        year = ""
+        year_div = card.find('div', class_='ye-w')
+        if year_div:
+            year = year_div.get_text(strip=True)
 
-            yearElement = filmElement.find_previous(class_='ye-w')
-            year = yearElement.get_text() if yearElement else '-'
+        # 📌 Rating
+        rating = ""
+        rating_div = card.find('div', class_='avg mx-0')
+        if rating_div:
+            rating = rating_div.get_text(strip=True)
 
-            ratingElement = posterElement.find_next(class_='avgrat-box')
-            rating = ratingElement.get_text() if ratingElement else '--'
-
-            genreElement = filmElement.find('div', class_="mc-genre")
-            genre = genreElement.get_text() if genreElement else "Desconocido"
-
-            # Depuración: Ver cómo estamos extrayendo la sinopsis
-            summaryElement = filmElement.find('div', class_="mc-summary")
-            summary = summaryElement.get_text().strip() if summaryElement else "Sinopsis no disponible"
-            print(f"Summary: {summary}")  # Mostrar la sinopsis extraída para verificar
-
-            filmaffinityElements.append([title, url, rating, year, image, genre, summary])
-    else:  # No hemos ido a la pantalla de búsqueda sino a la página de la película/serie en sí
-        completeInformation = web_scrapping_filmaffinity_main_page(htmlText)
-        filmaffinityElements.append([completeInformation[0], completeInformation[1], completeInformation[2], completeInformation[3], completeInformation[4], completeInformation[8], completeInformation[10]])
+        # 📌 Agregamos la película a la lista
+        filmaffinityElements.append((title, url, rating, year, image))
 
     return filmaffinityElements
 
 def web_scrapping_filmaffinity_main_page(htmlText):
     soup = BeautifulSoup(htmlText, "html.parser")
-    
     # Title
     title = None
     try:
         title = soup.find('h1').find('span').get_text().strip()
     except:
         title = ""
+
+    # Movie Type  
+    isFilm = False
+    isSerie = False
+    isDocumentary = False
+
+    # Buscar el elemento con la clase 'movie-type'
+    movie_type_tag = soup.find('span', class_='movie-type')
+
+    if movie_type_tag:
+        type_tags = movie_type_tag.find_all('span', class_='type')
+        if type_tags:
+            for type_tag in type_tags:
+                type_text = type_tag.get_text(strip=True).lower()
+                if 'serie' in type_text or 'miniserie' in type_text:
+                    isSerie = True
+                elif 'documental' in type_text:
+                    isDocumentary = True
+    if not isSerie:
+        isFilm = True
     
     # URL
     allLinks = soup.find_all('a')
@@ -280,13 +310,15 @@ def web_scrapping_filmaffinity_main_page(htmlText):
     except:
         duration = ""
 
-    return [title, url, rating, year, image, originalTitle, country, director, genre, company, summary, cast, credits, photography, music, ratingCount, duration]
+    return [title, url, rating, year, image, originalTitle, country, director, genre, company, summary, cast, credits, photography, music, ratingCount, duration, isFilm, isSerie, isDocumentary]
 
 def url_to_film_code(url):
-    match = re.search(r"\/film(\d+)", url)
-    if match:
-        return match.group(1)
-    return None
+    numeroPelicula = re.search(r'film(\d+)\.html', url)
+    if numeroPelicula:
+        numeroPelicula = numeroPelicula.group(1)
+        return numeroPelicula
+    else:
+        raise ValueError(f'No se encontró un número de película en el enlace: {url}')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=22049, debug=True)
+    app.run(host='0.0.0.0', port=22049)
