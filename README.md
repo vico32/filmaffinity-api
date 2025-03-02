@@ -128,6 +128,6 @@ GET [http://localhost:22049/api/film?url=%22https://www.filmaffinity.com/es/film
 git clone https://github.com/vico32/filmaffinity-api.git
 cd filmaffinity-api
 pip3 install flask requests beautifulsoup4
-python3 filmaffinity-api.py
+python3 filmaffinity-api.py > /dev/null 2>&1 &
 python3 pelicula.py
 ```
